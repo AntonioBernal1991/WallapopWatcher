@@ -1,0 +1,13 @@
+# Perfil de Chrome (cookies y sesión de Wallapop)
+chrome-perfil/
+
+# Configuración personal (número de WhatsApp, rutas locales)
+config.json
+
+# Estado y logs generados en ejecución
+estado.json
+seen.json
+precios.json
+*.log
+
+node_modules/

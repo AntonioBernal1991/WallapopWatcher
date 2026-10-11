@@ -1,0 +1,236 @@
+{
+  "pollMinutes": 5,
+  "maxAlertsPerCycle": 8,
+  "seenTtlDays": 180,
+
+  "_autoMensaje": "Escribe solo al vendedor cuando salta un aviso que cumple la regla de su búsqueda. Nunca dos veces al mismo anuncio, tope diario, y espera aleatoria antes de escribir. Pon activo a false para desactivarlo del todo.",
+  "_pendiente": "activo en false mientras no se resuelva cómo abrir la conversación de un anuncio sin chat previo: la URL /app/chat?itemId= sólo muestra la bandeja, y el botón Chat de la ficha no se renderiza en este Chrome.",
+  "autoMensaje": {
+    "activo": false,
+    "texto": "hola, sigue disponible?",
+    "maxPorDia": 4,
+    "esperaMinutos": [3, 12],
+    "navegador": {
+      "puerto": 9222,
+      "perfil": "C:\\Users\\Usuario\\Desktop\\wallapop-watcher\\chrome-perfil",
+      "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    }
+  },
+
+  "_pausaNocturna": "Franja en la que no busca nada (hora local, 24h). desdeHora incluida, hastaHora excluida. Quita el bloque o ponlo a null para vigilar sin descanso.",
+  "pausaNocturna": { "desdeHora": 1, "hastaHora": 7 },
+
+  "whatsapp": {
+    "recipient": "34600000000",
+    "bridgeUrl": "http://127.0.0.1:8099/api",
+    "tokenFile": "C:\\Users\\Usuario\\mcp-servers\\whatsapp-mcp\\whatsapp-bridge\\store\\.bridge-token",
+    "bridgeExe": "C:\\Users\\Usuario\\mcp-servers\\whatsapp-mcp\\whatsapp-bridge\\whatsapp-bridge.exe",
+    "bridgePort": 8099,
+    "autoStartBridge": true
+  },
+
+  "location": {
+    "latitude": 40.4168,
+    "longitude": -3.7038,
+    "distanceKm": 0
+  },
+
+  "_excludeStartsWith": "Si el título EMPIEZA por una de estas palabras, se vende el envoltorio y no el juego: 'Caja Zelda Skyward Sword' lleva el nombre completo del juego y sólo se distingue por la primera palabra.",
+  "excludeStartsWith": [
+    "caja", "cajas", "manual", "manuales", "caratula", "caratulas", "funda", "fundas",
+    "estuche", "poster", "posters", "cartel", "carteles", "guia", "guias", "folleto",
+    "manga", "puntos", "album", "sticker", "pegatina", "pegatinas", "carcasa", "carcasas",
+    "protector", "protectores", "revista", "inserto", "insert", "llavero", "figura",
+    "tablero", "tableros", "charm", "colgante"
+  ],
+
+  "_excludeWords": "Se aplican a TODAS las búsquedas (sólo sobre el título). Primer bloque: cosas que no son un juego. Segundo: otras consolas, para que un Zelda de Game Boy no se cuele en la media del de Switch.",
+  "excludeWords": [
+    "lote", "pack", "coleccion", "vacia", "solo caja", "sin juego", "sin cartucho",
+    "funda", "estuche", "organizador", "alfombrilla", "soporte", "dock", "base de carga",
+    "llavero", "adhesivo", "pegatina", "poster", "cartel", "taza", "camiseta", "mochila",
+    "figura", "amiibo", "peluche", "protector", "cristal templado", "grip", "correa",
+    "mando", "joycon", "joy con", "consola", "oled", "cargador", "cable", "auriculares",
+    "digital", "codigo", "descarga", "cuenta", "copia", "replica", "pirata",
+    "reproduccion", "carcasa", "piezas", "reparacion", "guia", "manual",
+    "caratula", "pvc", "pin ", "chapa", "insignia", "impresa", "impreso", "lampara",
+    "steelbook", "steel book", "solo box", "only box", "sin disco",
+    "gamuza", "tapete", "tarjeta nfc", "nfc", "pano de limpieza",
+    "folleto", "propaganda", "publicidad", "flyer", "recorte", "anuncio de revista",
+    "hucha", "lienzo", "lamina", "cuadro", "maceta", "cojin", "manta", "toalla"
+  ],
+
+  "_gruposExcluidos": "Listas de otras plataformas. NO pueden ser globales: excluir 'game boy' es imprescindible vigilando Switch y rompe por completo la vigilancia de un juego de Game Boy. Cada búsqueda elige su grupo con excludeGroups.",
+  "gruposExcluidos": {
+    "otrasConsolasSwitch": [
+      "switch 2", "n64", "nintendo 64", "super nintendo", "snes", "nintendo nes",
+      "gamecube", "game cube", "wii u", "wii", "3ds", "2ds", "nintendo ds",
+      "game boy", "gameboy", "gba", "megadrive", "mega drive",
+      "ps4", "ps5", "ps3", "psp", "xbox", "steam"
+    ],
+    "otrasConsolasGameBoy": [
+      "nintendo switch", "switch", "nintendo ds", "3ds", "2ds", "gba",
+      "game boy advance", "advance", "n64", "nintendo 64", "gamecube", "wii",
+      "super nintendo", "snes", "megadrive", "mega drive",
+      "ps1", "ps2", "ps3", "ps4", "ps5", "psp", "xbox", "steam", "android"
+    ]
+  },
+
+  "watches": [
+    {
+      "name": "Zelda Link's Awakening",
+      "keywords": "zelda links awakening switch",
+      "requireWords": ["awakening"],
+      "minPrice": 15,
+      "maxPrice": 28.99,
+      "maxAgeDays": 90,
+      "shippingOnly": true,
+      "soloPeninsula": true,
+      "noCartuchoSuelto": true,
+      "excludeGroups": ["otrasConsolasSwitch"],
+      "autoMensaje": { "activo": true, "maxPrice": 25.99 }
+    },
+
+    {
+      "name": "Zelda Skyward Sword HD",
+      "keywords": "zelda skyward sword hd switch",
+      "requireWords": ["skyward"],
+      "minPrice": 15,
+      "maxPrice": 28.99,
+      "maxAgeDays": 90,
+      "shippingOnly": true,
+      "soloPeninsula": true,
+      "noCartuchoSuelto": true,
+      "excludeGroups": ["otrasConsolasSwitch"],
+      "autoMensaje": { "activo": true, "maxPrice": 25.99 }
+    },
+
+    {
+      "_nota": "Sólo existe en Nintendo DS, no hay versión de Switch. Es de los DS caros: la mediana ronda los 57 € y una copia jugable en español no baja de 45-55 €. Pedida el 2026-09-08 a 'menos de 26, sólo español', o sea MUY por debajo del mercado: es silenciosa por diseño, como la de Pokémon TCG. Si no salta en meses no está rota.",
+      "_reglaDelUsuario": "Vale el juego CON o SIN caja (por eso noCartuchoSuelto está en false), pero nunca la caja sola ni la tarjeta de puntos. Y nada de japonés: sólo lo que se juegue en español.",
+      "_trampa": "Dos anuncios distintos tienen el título limpio e idéntico al del juego ('Zelda Spirit Tracks - Nintendo DS') y sólo la descripción los delata: uno es una tarjeta de puntos VIP de 10 €, el otro es la versión japonesa de 20 €. De ahí excludeDescWords, que es la única regla que mira la descripción.",
+      "_ensayo": "node watcher.js --simular \"spirit tracks\" enseña qué pasaría el filtro sin enviar nada.",
+      "name": "Zelda Spirit Tracks",
+      "keywords": "zelda spirit tracks",
+      "queries": [
+        "zelda spirit tracks",
+        "the legend of zelda spirit tracks",
+        "zelda spirit tracks ds"
+      ],
+      "requireWords": ["spirit tracks"],
+      "minPrice": 15,
+      "maxPrice": 25.99,
+      "maxAgeDays": 90,
+      "maxAgePublicadoDays": 400,
+      "shippingOnly": true,
+      "soloPeninsula": true,
+      "noCartuchoSuelto": false,
+      "excludeWords": [
+        "club nintendo", "tarjeta", "targeta", "puntos", "revista", "nintendo accion",
+        "solo la caja", "caja sola", "unicamente la caja", "distribucion",
+        "promocional", "not for resale"
+      ],
+      "excludeStartsWith": ["selladas", "tarjeta", "targeta"],
+      "_excludeDescWords": "Frases inequívocas de 'esto no es el juego que quieres', las únicas que se buscan también en la descripción. 'japon' cubre Japón, japonés y japonesa de una vez; una copia PAL europea se juega en español aunque la caja venga en francés o inglés, así que sólo se excluye la japonesa.",
+      "excludeDescWords": [
+        "no es el juego", "no incluye el juego", "no incluye juego", "sin el juego",
+        "no se incluye el juego", "puntos vip", "puntos club nintendo",
+        "tarjeta club nintendo", "targeta club", "solo la caja", "solo caja",
+        "caja vacia", "unicamente la caja", "sin cartucho", "no incluye cartucho",
+        "solo carcasa", "solo la carcasa",
+        "japon", "ntsc-j", "ntsc j"
+      ]
+    },
+
+    {
+      "_apagada": "Retirada a petición del usuario el 2026-08-31: sólo quiere los dos Zelda. Pon enabled a true para reactivarla.",
+      "enabled": false,
+      "_nota": "New Horizons de Switch. El ruido aquí son los mandos y carcasas con la decoración del juego, que se venden justo en esta franja de precio.",
+      "name": "Animal Crossing New Horizons (Switch)",
+      "keywords": "animal crossing new horizons switch",
+      "queries": [
+        "animal crossing new horizons switch",
+        "animal crossing nintendo switch"
+      ],
+      "requireWords": ["animal crossing"],
+      "minPrice": 8,
+      "maxPrice": 20,
+      "maxAgeDays": 30,
+      "maxAgePublicadoDays": 90,
+      "shippingOnly": true,
+      "soloPeninsula": true,
+      "noCartuchoSuelto": true,
+      "excludeGroups": ["otrasConsolasSwitch"],
+      "excludeWords": [
+        "new leaf", "wild world", "pocket camp", "happy home", "city folk",
+        "accesorio", "accesorios", "shell", "mando pro", "joy con", "dock",
+        "tarjeta", "tarjetas", "sobre", "sobres"
+      ]
+    },
+
+    {
+      "_apagada": "Retirada a petición del usuario el 2026-08-31 (casi todo lo que salía eran anuncios zombis). Pon enabled a true para reactivarla.",
+      "enabled": false,
+      "_nota": "El juego de Game Boy Color, no las cartas físicas. requireAny cubre las tres formas en que se anuncia. Los excludeWords propios descartan cartuchos que no guardan partida, el fallo típico de este juego.",
+      "name": "Pokémon Trading Card Game (Game Boy)",
+      "keywords": "pokemon trading card game game boy",
+      "queries": [
+        "pokemon trading card game game boy",
+        "pokemon trading card game gbc",
+        "pokemon juego de cartas game boy color"
+      ],
+      "requireWords": ["pokemon"],
+      "requireAny": ["trading card", "tcg", "juego de cartas"],
+      "minPrice": 5,
+      "maxPrice": 14.99,
+      "maxAgeDays": 30,
+      "maxAgePublicadoDays": 90,
+      "shippingOnly": true,
+      "soloPeninsula": true,
+      "noCartuchoSuelto": true,
+      "excludeGroups": ["otrasConsolasGameBoy"],
+      "excludeWords": [
+        "carta", "cartas", "sobre", "sobres", "booster", "display", "coleccion",
+        "album", "llavero", "no guarda", "no salva", "no graba", "sin bateria",
+        "pila gastada", "no funciona", "para piezas", "defectuoso", "estropeado",
+        "mal estado", "roto", "leer descripcion", "repro", "reproduccion",
+        "japones", "japonesa", "japon", "jpn", "ntsc", "americana", "americano", "usa"
+      ]
+    },
+
+    {
+      "_apagada": "Retirada a petición del usuario el 2026-08-30. Pon enabled a true para reactivarla.",
+      "enabled": false,
+      "name": "Mario 3D World + Bowser's Fury",
+      "keywords": "super mario 3d world bowser fury switch",
+      "requireWords": ["3d world"],
+      "minPrice": 15,
+      "maxPrice": 25,
+      "maxAgeDays": 90,
+      "shippingOnly": true,
+      "soloPeninsula": true,
+      "noCartuchoSuelto": true
+    },
+
+    {
+      "_apagada": "Vigilancia de juegos de Switch en general. No avisa mientras enabled sea false; ponlo a true para reactivarla.",
+      "enabled": false,
+      "name": "Juegos Switch bajo precio medio",
+      "mode": "catalog",
+      "catalogFile": "juegos-switch.json",
+      "queries": [
+        "juegos nintendo switch",
+        "juego switch",
+        "nintendo switch cartucho"
+      ],
+      "minPrice": 5,
+      "maxPrice": 80,
+      "dealPercent": 30,
+      "medianTtlHours": 24,
+      "maxMedianLookupsPerCycle": 6,
+      "shippingOnly": true,
+      "soloPeninsula": true,
+      "noCartuchoSuelto": true
+    }
+  ]
+}
