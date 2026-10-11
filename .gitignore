@@ -8,6 +8,7 @@ config.json
 estado.json
 seen.json
 precios.json
+mensajes.json
 *.log
 
 node_modules/

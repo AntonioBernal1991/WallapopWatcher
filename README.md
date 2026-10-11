@@ -1,17 +1,68 @@
 # Wallapop Watcher
 
-Vigila Wallapop cada pocos minutos y te manda un **WhatsApp** cuando aparece un chollo.
-Sin dependencias: sólo Node y el bridge de WhatsApp que ya tienes autenticado.
+**Un vigilante que revisa Wallapop cada pocos minutos y te avisa por WhatsApp cuando aparece un chollo de verdad.**
+
+En Wallapop los buenos precios duran minutos. Si alguien sube un juego a mitad de precio, el primero que escribe se lo lleva. Wallapop Watcher hace esa vigilancia por ti: busca lo que te interesa y compara cada anuncio nuevo con lo que se pide por ese mismo producto en el mercado. Solo te escribe cuando el precio está claramente por debajo.
 
 ```
-🔥 CHOLLO · iPhone 13
+🔥 CHOLLO · Zelda Link's Awakening
 
-📱 iPhone 13 128GB impecable
-💰 185 € — 26% por debajo de la media (250 €)
+🎮 Zelda Link's Awakening Nintendo Switch
+💰 18 € — 40% por debajo de la media (30 €)
 📍 Madrid, Madrid · 📦 con envío · 🕒 hace 4 min
 
 https://es.wallapop.com/item/...
 ```
+
+## ¿Para qué sirve?
+
+- **Comprar barato sin estar pendiente del móvil.** Defines qué buscas y el vigilante se queda corriendo en segundo plano.
+- **Distinguir un chollo de algo simplemente barato.** Un precio máximo fijo te avisaría de cualquier funda o caja vacía. Este programa calcula la **mediana del mercado** para cada producto y solo avisa cuando un anuncio queda un porcentaje por debajo de ella.
+- **Vigilar categorías enteras.** Por ejemplo, *cualquier juego de Switch*. Reconoce qué juego es cada anuncio gracias a un catálogo de 145 títulos y lo compara con el precio medio de **ese** juego en concreto.
+- **Llegar el primero (opcional).** Puede escribir al vendedor un mensaje del tipo *"hola, sigue disponible?"* en cuanto salta el aviso.
+
+## Cómo funciona
+
+1. Cada `pollMinutes` minutos consulta la API pública de búsqueda de Wallapop para cada búsqueda configurada.
+2. Con una consulta sin límite de precio calcula la **mediana** de lo que se está pidiendo por el producto.
+3. Filtra los anuncios nuevos:
+   - descarta los que ya había visto y los reservados;
+   - descarta los que se salen del rango de precio;
+   - descarta accesorios, cajas vacías, otras consolas, copias, etc.
+4. Si un anuncio queda un `dealPercent` por debajo de la mediana, te manda un WhatsApp con el precio, el descuento, la ubicación y el enlace.
+5. Apunta el anuncio en `seen.json` para no repetirte el aviso nunca.
+
+No tiene dependencias: solo Node.js y su `fetch` y `WebSocket` nativos.
+
+## Requisitos
+
+- **Windows** (los scripts de arranque automático son de Windows; el motor en sí es Node puro).
+- **Node.js 22 o superior.**
+- Un **bridge de WhatsApp** que acepte peticiones HTTP en local, como [whatsapp-mcp](https://github.com/lharries/whatsapp-mcp), ya vinculado a tu cuenta. El vigilante llama a `/health` y `/send` del bridge y, si está caído, lo arranca él mismo.
+- *(Solo para los mensajes automáticos)* Google Chrome.
+
+## Instalación
+
+```bash
+git clone https://github.com/AntonioBernal1991/WallapopWatcher.git
+cd WallapopWatcher
+copy config.example.json config.json
+```
+
+Después edita `config.json`:
+
+- `whatsapp.recipient`: tu número con prefijo de país y sin `+` (por ejemplo `34600000000`).
+- `whatsapp.tokenFile`, `bridgeExe`, `bridgeUrl`: dónde está tu bridge de WhatsApp.
+- `location`: tus coordenadas y el radio en km (`0` = toda España).
+- `watches`: lo que quieres vigilar (más abajo se explica cómo).
+
+Comprueba que los avisos llegan:
+
+```bash
+node watcher.js --test
+```
+
+> `config.json` lleva tus datos personales y está en `.gitignore`: no se sube al repositorio.
 
 ## Uso
 
@@ -19,7 +70,7 @@ https://es.wallapop.com/item/...
 |---|---|
 | Probar que WhatsApp funciona | `node watcher.js --test` |
 | **Búscame ya y mándamelo** | `node watcher.js --ahora` |
-| …sólo una de las búsquedas | `node watcher.js --ahora "zelda"` |
+| …solo una de las búsquedas | `node watcher.js --ahora "zelda"` |
 | Una sola pasada | `node watcher.js --once` |
 | Vigilar en bucle | doble clic en **start.bat** |
 | Que arranque solo con Windows | `powershell -ExecutionPolicy Bypass -File instalar-inicio-automatico.ps1` |
@@ -27,53 +78,54 @@ https://es.wallapop.com/item/...
 | Ver qué reconoce el catálogo | `node watcher.js --diagnostico` |
 | **Ensayar una búsqueda sin enviar nada** | `node watcher.js --simular "spirit tracks"` |
 | Perfiles separados | `node watcher.js --config otro.json` |
+| Iniciar sesión para los mensajes automáticos | `node watcher.js --sesion` |
+| Ver mensajes enviados y pendientes | `node watcher.js --cola` |
+
+La configuración se relee **en cada pasada**, así que puedes editar `config.json` o el catálogo con el vigilante en marcha, sin reiniciarlo.
+
+---
 
 ## Qué considera un "chollo"
 
-`maxPrice` por sí solo te avisaría de cualquier cosa barata, y lo barato en
-Wallapop suele ser una funda. Lo que distingue "barato" de "chollo" es
-comparar contra **lo que se está pidiendo ahora mismo por ese mismo producto**.
+Lo que distingue algo *barato* de un *chollo* es compararlo con **lo que se está pidiendo ahora mismo por ese mismo producto**.
 
-Un anuncio te llega sólo si cumple **todo**:
+Un anuncio solo te llega si cumple **todas** estas condiciones:
 
-- No lo habías visto antes (memoria en `seen.json`, 30 días).
+- No lo había visto antes (memoria en `seen.json`, que dura `seenTtlDays` días).
 - No está reservado.
-- Su precio cae entre `minPrice` y `maxPrice`.
-- Su **título** no contiene ninguna `excludeWords`.
+- Su precio está entre `minPrice` y `maxPrice`.
+- Su **título** no contiene ninguna de las `excludeWords`.
 - Está al menos un `dealPercent` **por debajo de la mediana** del mercado.
 
-Se usa la mediana y no la media porque un solo anuncio absurdo (un Zelda a
-150 €) desplaza la media y no la mediana. Y hacen falta al menos 5 anuncios
-comparables: con menos, no hay mercado del que fiarse y no se opina.
+Se usa la mediana y no la media porque un solo anuncio absurdo (un Zelda a 150 €) mueve la media pero no la mediana. Además, hacen falta al menos 5 anuncios comparables: con menos no hay mercado fiable y el vigilante no opina.
 
-> Las `excludeWords` sólo miran el título, no la descripción. Casi cualquier
-> vendedor escribe "lo usé poco en mi consola", y filtrar por descripción
-> tumbaría anuncios perfectamente buenos.
+> Las `excludeWords` solo miran el título, no la descripción. Casi cualquier vendedor escribe "lo usé poco en mi consola", y filtrar por la descripción tumbaría anuncios perfectamente buenos.
 
 ## Dos modos de búsqueda
 
 ### Producto concreto
 
-Lo normal: unas `keywords`, un techo de precio y ya.
+Lo normal: unas `keywords`, un precio máximo y listo.
 
 ```jsonc
 {
   "name": "Zelda Link's Awakening",
   "keywords": "zelda links awakening switch",
-  "minPrice": 8,          // suelo anti-timo (anuncios de 1 € para captar)
-  "maxPrice": 21          // techo duro
+  "requireWords": ["awakening"],  // el título TIENE que llevarlo
+  "minPrice": 8,                  // suelo anti-timo (anuncios de 1 € como gancho)
+  "maxPrice": 21                  // precio máximo, sin excepciones
 }
 ```
 
+`requireWords` es la mejor defensa para un producto concreto: exigir `["awakening"]` evita que se cuele cualquier otro Zelda que Wallapop considere "relacionado".
+
 ### Catálogo (`"mode": "catalog"`)
 
-Para vigilar una **categoría entera** — "juegos de Switch" — donde una sola
-mediana no serviría: mezclar un Zelda de 35 € con un indie de 5 € da un número
-que no describe a ninguno de los dos. Lo que hace:
+Sirve para vigilar una **categoría entera**, por ejemplo "juegos de Switch". Ahí una sola mediana no sirve: mezclar un Zelda de 35 € con un indie de 5 € da un número que no describe a ninguno de los dos. En este modo el vigilante:
 
-1. Barre los anuncios más recientes con varias `queries`.
+1. Repasa los anuncios más recientes con varias `queries`.
 2. Identifica **qué juego** es cada anuncio, usando `juegos-switch.json`.
-3. Calcula la mediana **de ese título en concreto** (cacheada en `precios.json`).
+3. Calcula la mediana **de ese título en concreto** y la guarda en caché en `precios.json`.
 4. Avisa si el anuncio está un `dealPercent` por debajo de *su* mediana.
 
 ```jsonc
@@ -84,23 +136,19 @@ que no describe a ninguno de los dos. Lo que hace:
   "queries": ["juegos nintendo switch", "juego switch", "nintendo switch cartucho"],
   "minPrice": 5,
   "maxPrice": 80,
-  "dealPercent": 30,               // 30% bajo la media de ESE juego
+  "dealPercent": 30,               // 30% por debajo de la media de ESE juego
   "medianTtlHours": 24,            // cada cuánto se recalculan las medias
   "maxMedianLookupsPerCycle": 6    // consultas de media por pasada
 }
 ```
 
-Los anuncios que no correspondan a ningún juego del catálogo se ignoran.
+Los anuncios que no corresponden a ningún juego del catálogo se ignoran.
 
-### Afinar el catálogo
+#### Afinar el catálogo
 
-`node watcher.js --diagnostico` imprime tres listas: qué reconoce, qué no
-reconoce (candidatos a añadir) y qué descarta por `excludeWords`.
+`node watcher.js --diagnostico` muestra tres listas: lo que reconoce, lo que no reconoce (candidatos a añadir) y lo que descarta por `excludeWords`.
 
-Cada juego del catálogo tiene `alias` (textos que lo identifican en el título)
-y opcionalmente `excluir`. Gana el alias **más largo que encaje**, de modo que
-"Super Mario Party Jamboree" no se confunda con "Super Mario Party". `excluir`
-remata lo que ningún alias separa:
+Cada juego del catálogo tiene `alias` (textos que lo identifican en el título) y, opcionalmente, `excluir`. Gana el alias **más largo que encaje**, así "Super Mario Party Jamboree" no se confunde con "Super Mario Party". `excluir` resuelve los casos que ningún alias separa:
 
 ```jsonc
 { "id": "minecraft", "nombre": "Minecraft", "alias": ["minecraft"],
@@ -114,7 +162,9 @@ Sin ese `excluir`, "Minecraft Dungeons" contaminaría la media de Minecraft.
 ```jsonc
 {
   "pollMinutes": 5,          // cada cuánto mira
-  "maxAlertsPerCycle": 8,    // tope de mensajes por pasada (el resto, a la cola)
+  "maxAlertsPerCycle": 8,    // máximo de mensajes por pasada (el resto espera a la siguiente)
+  "seenTtlDays": 180,        // cuánto recuerda un anuncio ya avisado
+  "pausaNocturna": { "desdeHora": 1, "hastaHora": 7 },   // no busca en esa franja
 
   "location": {
     "latitude": 40.4168,     // ← pon tus coordenadas
@@ -122,157 +172,98 @@ Sin ese `excluir`, "Minecraft Dungeons" contaminaría la media de Minecraft.
     "distanceKm": 0          // 0 = toda España
   },
 
-  "seenTtlDays": 180,        // cuánto recuerda un anuncio ya avisado
-  "pausaNocturna": { "desdeHora": 1, "hastaHora": 7 },   // no busca en esa franja
-
-  "excludeStartsWith": [...],  // descarta por la PRIMERA palabra del título
-  "excludeWords": [...],       // se aplican a TODAS las búsquedas
-  "watches": [...]             // cada una puede sumar las suyas
+  "excludeStartsWith": [...],   // descarta por la PRIMERA palabra del título
+  "excludeWords": [...],        // se aplican a TODAS las búsquedas
+  "gruposExcluidos": {...},     // listas de otras consolas, que cada búsqueda elige con excludeGroups
+  "watches": [...]              // tus búsquedas; cada una puede añadir sus propios filtros
 }
 ```
 
-`excludeStartsWith` existe porque "Caja Zelda Skyward Sword" contiene el nombre
-entero del juego: ninguna palabra prohibida lo distingue, sólo que *empieza*
-por "Caja". Lo mismo con "Manual …", "Carátula …" o "Póster …".
+**Opciones de cada búsqueda:** `keywords`, `minPrice`, `maxPrice`, `dealPercent`, `excludeWords`, `excludeDescWords`, `excludeGroups`, `requireWords`, `shippingOnly`, `categoryId`, `maxAgeDays` (descarta anuncios con más de X días), `matchDescription` (aplica los filtros también a la descripción) y `enabled`.
 
-Cada aviso lleva una cabecera `🔄 Ronda #N · día, hora`, para saber de un
-vistazo si dos mensajes vienen del mismo barrido o de barridos distintos. El
-contador vive en `estado.json` y sobrevive a los reinicios.
+### Filtros que merecen explicación
 
-Opciones por búsqueda: `keywords`, `minPrice`, `maxPrice`, `dealPercent`,
-`excludeWords`, `requireWords`, `shippingOnly`, `categoryId`, `maxAgeDays`
-(descarta anuncios más viejos que X días) y `matchDescription` (para volver a
-filtrar también por descripción).
+- **`excludeStartsWith`.** "Caja Zelda Skyward Sword" contiene el nombre entero del juego, así que ninguna palabra prohibida lo distingue: lo único que lo delata es que *empieza* por "Caja". Pasa lo mismo con "Manual …", "Carátula …" o "Póster …".
+- **`excludeDescWords`.** Es el punto intermedio entre mirar solo el título y mirarlo todo: son las únicas palabras que se buscan **también en la descripción**. Pon ahí solo frases que no dejen duda ("no es el juego", "puntos vip", "versión japonesa"). Existe porque hay anuncios con un título **idéntico** al del juego que solo se delatan en la descripción.
+- **`gruposExcluidos`.** Estas listas no pueden ser globales: excluir "game boy" es imprescindible si vigilas Switch y rompe por completo la vigilancia de un juego de Game Boy. Por eso cada búsqueda elige su grupo.
 
-`excludeDescWords` es el término medio entre mirar sólo el título y mirarlo
-todo: son las únicas palabras que se buscan **también en la descripción**. Mete
-ahí sólo frases que no admitan duda ("no es el juego", "puntos vip", "versión
-japonesa"), nunca algo ambiguo, o vuelves al problema que hizo que
-`excludeWords` mirase sólo el título: casi cualquier vendedor escribe "lo usé
-poco en mi consola" y eso tumbaba anuncios buenos. Existe porque hay anuncios
-cuyo título es **idéntico** al del juego y sólo la descripción los delata: en
-Spirit Tracks, una tarjeta de puntos de 10 € y la versión japonesa de 20 € se
-anunciaban las dos como "Zelda Spirit Tracks - Nintendo DS".
+### Ensayar antes de activar una búsqueda
 
-### Ensayar antes de soltar una búsqueda
-
-`node watcher.js --simular "<nombre>"` hace una pasada en seco: dice de qué
-avisaría, y de lo demás **por qué** lo descarta (`filtro de palabras`,
-`reservado`, `publicado hace 402 d`, `sobre el máximo`…). No toca `seen.json`
-ni manda ningún WhatsApp, y es la única forma de ver una búsqueda todavía
-apagada con `"enabled": false` — que es justo cuando quieres mirarla, antes de
-encenderla y no después.
-
-`requireWords` es la mejor defensa para un producto concreto: exigir
-`["awakening"]` en el título evita que la búsqueda te cuele cualquier otro
-Zelda que Wallapop considere "relacionado".
-
-La config se relee **en cada pasada**: puedes editar `config.json` o el
-catálogo con el vigilante corriendo, sin reiniciarlo.
-
-Las `excludeWords` globales que vienen puestas cubren dos frentes: lo que no es
-un juego (fundas, alfombrillas, soportes, lotes, consolas) y **otras consolas**
-— sin eso, un Link's Awakening de Game Boy o un Smash de N64 se colarían en la
-media del juego de Switch, que fue justo lo que pasó en las primeras pruebas.
-
-Añade tantas entradas a `watches` como quieras. Cambia `pollMinutes` con
-cabeza: por debajo de 3 minutos no ganas gran cosa y castigas la API.
+`node watcher.js --simular "<nombre>"` hace una pasada de prueba. Te dice de qué anuncios avisaría y, del resto, **por qué** los descarta (`filtro de palabras`, `reservado`, `publicado hace 402 d`, `sobre el máximo`…). No toca `seen.json` ni manda ningún WhatsApp. Además funciona con búsquedas desactivadas (`"enabled": false`), así puedes revisarlas antes de activarlas.
 
 ## Detalles prácticos
 
-- **Nunca repite un aviso**: cada anuncio enviado queda en `seen.json` y no
-  vuelve a mandarse. La memoria dura `seenTtlDays` días (180 por defecto).
-- **Primera pasada de cada búsqueda**: memoriza lo que hay sin avisarte, para
-  no llenarte el WhatsApp con el histórico. Los avisos empiezan en la segunda.
-- **Corriendo como tarea programada** no hay consola: mira `watcher.log` para
-  comprobar que sigue dando rondas. Para pararlo del todo:
-  `Stop-ScheduledTask -TaskName WallapopWatcher` y matar el `node.exe`, o
-  ejecutar `instalar-inicio-automatico.ps1 -Quitar`.
-- **Nombre de la búsqueda**: si cambias `name`, cuenta como búsqueda nueva y
-  vuelve a memorizar sin avisar.
-- **Si el bridge de WhatsApp está caído**, lo arranca solo. Si el envío falla,
-  el anuncio **no** se marca como visto y se reintenta en la siguiente pasada.
-- **Historial**: cada aviso enviado se apunta en `alerts.log` (una línea JSON
-  por chollo), por si quieres revisar precios pasados.
+- **Nunca repite un aviso.** Cada anuncio enviado queda en `seen.json` y no vuelve a mandarse.
+- **Primera pasada de cada búsqueda.** El vigilante memoriza lo que ya hay sin avisarte, para no llenarte el WhatsApp con anuncios antiguos. Los avisos empiezan en la segunda pasada. Si cambias el `name` de una búsqueda, cuenta como nueva.
+- **Rondas numeradas.** Cada aviso lleva una cabecera `🔄 Ronda #N · día, hora`, así sabes si dos mensajes vienen de la misma ronda. El contador se guarda en `estado.json`.
+- **Si WhatsApp falla.** Si el bridge está caído, lo arranca solo. Si el envío falla, el anuncio **no** se marca como visto y se reintenta en la siguiente pasada.
+- **Historial.** Cada aviso se guarda en `alerts.log` (una línea JSON por chollo).
+- **En segundo plano no hay consola.** Mira `watcher.log` para comprobar que sigue funcionando. Para pararlo: `Stop-ScheduledTask -TaskName WallapopWatcher` y cierra el proceso `node.exe`, o ejecuta `instalar-inicio-automatico.ps1 -Quitar`.
 
-## Cuando algo no va
+## Mensajes automáticos al vendedor (opcional)
 
-## Mensajes automáticos al vendedor
-
-Cuando salta un aviso que cumple la regla de su búsqueda, el vigilante le
-escribe al vendedor por el chat de Wallapop.
+Cuando salta un aviso que cumple la regla de su búsqueda, el vigilante puede escribir al vendedor por el chat de Wallapop. **Viene desactivado.**
 
 ```jsonc
 // global
 "autoMensaje": {
   "activo": true,                      // false lo apaga todo
   "texto": "hola, sigue disponible?",
-  "maxPorDia": 4,                      // tope de mensajes al día
+  "maxPorDia": 4,                      // máximo de mensajes al día
   "esperaMinutos": [3, 12],            // espera aleatoria antes de escribir
   "navegador": { "puerto": 9222, "perfil": "...\\chrome-perfil", "chrome": "...\\chrome.exe" }
 }
 
-// por búsqueda
+// en cada búsqueda
 "autoMensaje": { "activo": true, "maxPrice": 25 }
 ```
 
 **Puesta en marcha (una sola vez):**
 
-1. `node watcher.js --sesion` → abre un Chrome propio del vigilante
-2. Inicia sesión en Wallapop **en esa ventana**
-3. `node watcher.js --sesion` otra vez → debe decir `✅ sesión iniciada`
+1. Ejecuta `node watcher.js --sesion`. Se abre un Chrome propio del vigilante, con su propio perfil en `chrome-perfil/`, aparte del tuyo.
+2. Inicia sesión en Wallapop **en esa ventana**.
+3. Ejecuta `node watcher.js --sesion` otra vez. Debe decir `✅ sesión iniciada`.
 
-Ese Chrome tiene su propio perfil en `chrome-perfil/`, aparte del tuyo, y debe
-quedarse abierto para que el vigilante pueda escribir. `node watcher.js --cola`
-muestra lo enviado y lo pendiente.
+Ese Chrome tiene que quedarse abierto para que el vigilante pueda escribir.
 
-**Cómo envía.** No replica la API interna: el chat de Wallapop va por PubNub
-con un token que caduca cada 60 minutos, así que imitarlo se rompería solo. En
-vez de eso maneja la interfaz real por CDP —el WebSocket nativo de Node, sin
-dependencias— escribiendo en el mismo cuadro de texto que usarías tú.
+**Cómo envía.** No imita la API interna: el chat de Wallapop va por PubNub con un token que caduca cada 60 minutos, así que una imitación dejaría de funcionar sola. En su lugar maneja la página real por el protocolo de depuración de Chrome (CDP) y escribe en el mismo cuadro de texto que usarías tú.
 
-**Salvaguardas**: nunca escribe dos veces al mismo anuncio (`mensajes.json`),
-comprueba además en el propio chat que no haya mensajes tuyos previos, espera
-unos minutos aleatorios en vez de escribir al segundo, respeta el tope diario y
-deja 20-60 s entre mensajes. Cada mensaje enviado te llega también por WhatsApp.
+**Salvaguardas:**
 
-> Aun así esto es automatizar mensajes, algo que las condiciones de uso de
-> Wallapop no permiten. El riesgo de que limiten la cuenta es real; los límites
-> de arriba lo reducen, no lo eliminan. `"activo": false` lo para en seco.
+- Nunca escribe dos veces al mismo anuncio (`mensajes.json`) y comprueba en el propio chat que no le hayas escrito ya.
+- Espera unos minutos aleatorios antes de escribir y deja 20-60 s entre mensajes.
+- Respeta el máximo diario.
+- Cada mensaje enviado te llega también por WhatsApp.
 
-## Trampa de la API (importante si tocas el código)
-
-`order_by=newest` **no ordena: restringe**. Devuelve sólo lo publicado hace muy
-poco, así que en una búsqueda de nicho da 0 resultados de 36 — y combinado con
-`max_sale_price` da cero siempre. Por eso `huntSearch()` lanza **dos**
-consultas, una por relevancia (orden por defecto) y otra con `newest`, y une
-los resultados. No lo simplifiques a una sola con `newest`.
-
-Otros valores (`most_recent`, `creation_date`, `relevance`, `distance`)
-devuelven HTTP 400. Los únicos válidos son `newest`, `price_low_to_high` y
-`price_high_to_low`.
+> ⚠️ Esto es automatizar mensajes, algo que las condiciones de uso de Wallapop no permiten. El riesgo de que limiten tu cuenta es real: estos límites lo reducen, pero no lo eliminan. `"activo": false` lo desactiva al momento.
 
 ## Cuando algo no va
 
 | Síntoma | Causa habitual |
 |---|---|
-| `el bridge no respondió a tiempo` | La sesión de WhatsApp caducó: arranca `whatsapp-bridge.exe` a mano y reescanea el QR. |
+| `el bridge no respondió a tiempo` | La sesión de WhatsApp caducó: arranca el bridge a mano y vuelve a escanear el QR. |
 | `Wallapop responde 429` | Demasiadas consultas. Sube `pollMinutes` o reduce búsquedas. |
-| Avisos de accesorios (fundas, cables) | Amplía `excludeWords` de esa búsqueda. |
-| No llega ningún aviso nunca | `dealPercent` demasiado exigente. Bájalo o quítalo y mira `alerts.log`. |
+| Llegan avisos de accesorios (fundas, cables) | Amplía las `excludeWords` de esa búsqueda. |
+| No llega ningún aviso nunca | `dealPercent` demasiado exigente. Bájalo y revisa `--simular` o `alerts.log`. |
 
-## Piezas
+No bajes `pollMinutes` de 3: no ganas casi nada y sobrecargas la API.
+
+## Nota técnica: cuidado con la API
+
+`order_by=newest` **no ordena, restringe**. Devuelve solo lo publicado hace muy poco, así que en una búsqueda poco común da 0 resultados, y combinado con `max_sale_price` da cero siempre. Por eso `huntSearch()` lanza **dos** consultas, una por relevancia y otra con `newest`, y junta los resultados. No lo simplifiques a una sola consulta con `newest`.
+
+Los únicos valores válidos de `order_by` son `newest`, `price_low_to_high` y `price_high_to_low`. Los demás (`most_recent`, `creation_date`, `relevance`, `distance`) devuelven HTTP 400.
+
+## Archivos
 
 | Archivo | Para qué |
 |---|---|
-| `watcher.js` | Todo el motor |
-| `config.json` | Tus búsquedas |
-| `juegos-switch.json` | Catálogo de juegos (145 títulos) con sus alias |
-| `seen.json` | Memoria de anuncios ya avisados (se crea solo) |
-| `precios.json` | Medias de mercado cacheadas por juego (se crea solo) |
-| `alerts.log` | Historial de chollos enviados |
-| `watcher.log` | Actividad del vigilante (para saber si sigue vivo) |
-| `estado.json` | Contador de rondas (se crea solo) |
+| `watcher.js` | El motor: búsqueda, filtros, medianas y avisos |
+| `navegador.js` | Control de Chrome por CDP para los mensajes automáticos |
+| `config.example.json` | Plantilla de configuración (cópiala a `config.json`) |
+| `juegos-switch.json` | Catálogo de 145 juegos de Switch con sus alias |
 | `start.bat` | Arrancar con doble clic |
 | `iniciar-oculto.vbs` | Arranque sin ventana (lo usa la tarea programada) |
-| `instalar-inicio-automatico.ps1` | Instalar/quitar el arranque con Windows |
+| `instalar-inicio-automatico.ps1` | Activa o quita el arranque automático con Windows |
+
+Se generan solos y no se suben al repositorio: `config.json`, `seen.json`, `precios.json`, `estado.json`, `mensajes.json`, `alerts.log`, `watcher.log` y `chrome-perfil/`.
